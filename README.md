@@ -6,14 +6,14 @@
 
 ------------
 
-# Author: s4vitar - nmap y pa' dentro
-# Mejorado por Papote-M139 - Name version: YainiCrack -  actualizacion 2024
+Author: s4vitar - nmap y pa' dentro
+Mejorado por Papote-M139 - Name version: YainiCrack -  actualizacion 2024
 
-# s4viPwnWifi Script Mejorado
+ s4viPwnWifi Script Mejorado
 
 Este script ha sido diseñado para realizar ataques a redes Wi-Fi, incluyendo Handshake, PKMID y WPA3. Es una mejora del script original creado por s4vitar, con actualizaciones para 2024.
 
-## Requisitos
+ Requisitos
 
 Antes de ejecutar el script, asegúrate de tener las siguientes herramientas instaladas en tu sistema:
 
@@ -25,7 +25,7 @@ Antes de ejecutar el script, asegúrate de tener las siguientes herramientas ins
 
 El script es totalmente compatible con Kali Linux.
 
-## Instalación
+ Instalación
 
 Si las herramientas necesarias no están instaladas, el script intentará instalarlas automáticamente. No obstante, es recomendable instalarlas manualmente antes de ejecutar el script para evitar problemas.
 
