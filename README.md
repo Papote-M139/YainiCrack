@@ -33,6 +33,56 @@ Si las herramientas necesarias no están instaladas, el script intentará instal
 
 Para instalar las herramientas manualmente, puedes usar los siguientes comandos:
 
-```bash
+Comandos:
+
 sudo apt-get update
 sudo apt-get install aircrack-ng macchanger hcxdumptool hashcat reaver -y
+
+Uso:
+Para ejecutar el script, sigue los siguientes pasos.
+
+Clona o descarga el script en tu sistema: sudo git clone https://github.com/Papote-M139/YainiCrack 
+
+Asegúrate de que el script tenga permisos de ejecución: chmod +x YainiCrack.sh
+
+Ejecuta el script como root: sudo ./YainiCrack.sh
+
+Opciones:
+El script acepta las siguientes opciones:
+
+-a: Modo de ataque (Handshake, PKMID, WPA3).
+-n: Nombre de la tarjeta de red.
+-h: Mostrar el panel de ayuda.
+
+Ejemplos de Uso:
+
+Ataque Handshake: sudo ./s4viPwnWifi.sh -a Handshake -n wlan0
+
+Ataque PKMID: sudo ./s4viPwnWifi.sh -a PKMID -n wlan0
+
+Ataque WPA3: sudo ./s4viPwnWifi.sh -a WPA3 -n wlan0
+
+Descripción de las Funciones:
+
+ctrl_c()
+Maneja las interrupciones del script (Ctrl+C), deteniendo la tarjeta de red y eliminando archivos temporales antes de salir.
+
+helpPanel()
+Muestra el panel de ayuda con las opciones disponibles y su uso.
+
+dependencies()
+Comprueba y, si es necesario, instala las dependencias requeridas para ejecutar el script.
+
+selectNetworkCard()
+Detecta y selecciona automáticamente la mejor tarjeta de red disponible para el ataque.
+
+startAttack()
+Inicia el ataque seleccionado (Handshake, PKMID, WPA3) configurando la tarjeta de red y ejecutando los comandos necesarios para capturar handshakes o hashes.
+
+Notas Adicionales
+El script debe ejecutarse como root para funcionar correctamente.
+Asegúrate de usar este script de manera ética y legal, obteniendo siempre el permiso del propietario de la red antes de realizar cualquier tipo de prueba de penetración.
+
+
+
+Este archivo README.txt proporciona una guía clara y detallada sobre cómo usar el script, instalar las dependencias necesarias y entender las funciones principales del script.
