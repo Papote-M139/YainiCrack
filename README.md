@@ -36,7 +36,7 @@ Para instalar las herramientas manualmente, puedes usar los siguientes comandos:
 Comandos:
 
 sudo apt-get update
-sudo apt-get install aircrack-ng macchanger hcxdumptool hashcat reaver -y
+sudo apt-get install aircrack-ng macchanger hcxdumptool hashcat reaver xterm hcxpcaptools -y
 
 Uso:
 Para ejecutar el script, sigue los siguientes pasos.
