@@ -72,9 +72,11 @@ function dependencies() {
 function startAttack() {
     clear
     echo -e "${yellowColour}[*]${endColour}${grayColour} Configurando tarjeta de red...${endColour}\n"
-    airmon-ng start $networkCard > /dev/null 2>&1
+    ifconfig $networkCard down
+    iwconfig $networkCard mode monitor
+    ifconfig $networkCard up
     if [ $? -ne 0 ]; then
-        echo -e "${redColour}[!] Error al iniciar airmon-ng en $networkCard${endColour}"
+        echo -e "${redColour}[!] Error al configurar $networkCard en modo monitor${endColour}"
         exit 1
     fi
 
