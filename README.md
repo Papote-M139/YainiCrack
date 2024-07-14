@@ -86,3 +86,20 @@ Asegúrate de usar este script de manera ética y legal, obteniendo siempre el p
 
 
 Este archivo README.txt proporciona una guía clara y detallada sobre cómo usar el script, instalar las dependencias necesarias y entender las funciones principales del script.
+
+
+
+
+
+
+
+
+
+
+
+sudo apt-get install wordlists
+sudo gzip -d /usr/share/wordlists/rockyou.txt.gz
+
+
+sudo apt-get install hcxtools
+
